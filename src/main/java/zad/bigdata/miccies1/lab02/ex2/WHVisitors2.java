@@ -21,7 +21,7 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 
 
-public class WHVisitors {
+public class WHVisitors2 {
 	
 	public static class TextArrayWritable extends ArrayWritable {
         public TextArrayWritable() {
@@ -92,7 +92,7 @@ public class WHVisitors {
          FileInputFormat.setInputPaths(job, new Path(args[0]));
          FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
-         job.setJarByClass(WHVisitors.class);
+         job.setJarByClass(WHVisitors2.class);
          System.exit(job.waitForCompletion(true) ? 0 : 1);
          
     }

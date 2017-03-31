@@ -181,11 +181,11 @@ public class HoursStatistics extends Configured implements Tool {
             // Mean values are calculated when writing objects into context.
             context.write(key, new AppointmentInfo(
                     appointmentsCount,
-                    (latenciesSum + precipitationsSum) / appointmentsCount,
+                    appointmentsCount == 0 ? 0 : (latenciesSum + precipitationsSum) / appointmentsCount,
                     lateArrivalsCount,
-                    latenciesSum / lateArrivalsCount,
+                    lateArrivalsCount == 0 ? 0 : latenciesSum / lateArrivalsCount,
                     precipitationsCount,
-                    precipitationsSum / precipitationsCount
+                    precipitationsCount == 0 ? 0 : precipitationsSum / precipitationsCount
                     )
             );
         }
