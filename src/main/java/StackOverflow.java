@@ -1,30 +1,22 @@
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.Stat;
+import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.apache.hadoop.io.Text;
 
-import javax.swing.*;
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
-import java.util.HashMap;
 
 /**
  * Created by Anita on 2017-04-07.
@@ -35,15 +27,17 @@ public class StackOverflow extends Configured implements Tool {
         System.exit(res);
     }
 
-    public int run (String[] args) throws Exception{
+    public int run(String[] args) throws Exception {
         Configuration conf = this.getConf();
         FileSystem fs = FileSystem.get(conf);
-       Path tmpPath = new Path("/user/743ea2c9-d49f-4045-9ba4-161d2a7cb2be/Kozicka/tmp");
-       // Path tmpPath = new Path("tmp");
+        //Path tmpPath = new Path("/user/743ea2c9-d49f-4045-9ba4-161d2a7cb2be/Kozicka/tmp");
+        Path tmpPath = new Path("tmp");
+        // Path tmpPath = new Path("tmp");
         fs.delete(tmpPath, true);
 
-     //   Path tmpPath2 = new Path("tmp2");
-        Path tmpPath2 = new Path("/user/743ea2c9-d49f-4045-9ba4-161d2a7cb2be/Kozicka/tmp2");
+        //   Path tmpPath2 = new Path("tmp2");
+//        Path tmpPath2 = new Path("/user/743ea2c9-d49f-4045-9ba4-161d2a7cb2be/Kozicka/tmp2");
+        Path tmpPath2 = new Path("tmp2");
         fs.delete(tmpPath2, true);
 
         Path outputPath = new Path(args[1]);
@@ -63,7 +57,7 @@ public class StackOverflow extends Configured implements Tool {
         FileOutputFormat.setOutputPath(jobA, tmpPath);
 
         jobA.setJarByClass(StackOverflow.class);
-       // jobA.setNumReduceTasks(4);
+        // jobA.setNumReduceTasks(4);
         jobA.setOutputFormatClass(TextOutputFormat.class);
         jobA.waitForCompletion(true);
 
@@ -71,7 +65,7 @@ public class StackOverflow extends Configured implements Tool {
         Job jobB = Job.getInstance(conf, "StackOverflow");
         jobB.setOutputKeyClass(IntWritable.class);
         jobB.setOutputValueClass(Text.class);
-       // jobB.setNumReduceTasks(4);
+        // jobB.setNumReduceTasks(4);
         jobB.setMapOutputKeyClass(Text.class);
         jobB.setMapOutputValueClass(Text.class);
 
@@ -83,7 +77,7 @@ public class StackOverflow extends Configured implements Tool {
 
         jobB.setInputFormatClass(KeyValueTextInputFormat.class);
         jobB.setOutputFormatClass(TextOutputFormat.class);
-      //  jobB.setOutputFormatClass(TextOutputFormat.class);
+        //  jobB.setOutputFormatClass(TextOutputFormat.class);
 
         jobB.setJarByClass(StackOverflow.class);
         jobB.waitForCompletion(true);
@@ -95,6 +89,7 @@ public class StackOverflow extends Configured implements Tool {
         jobC.setMapOutputKeyClass(IntWritable.class);
         jobC.setMapOutputValueClass(Text.class);
 
+        jobC.setMapperClass(SortMap.class);
         jobC.setReducerClass(SortRed.class);
         jobC.setNumReduceTasks(1);
         jobC.setSortComparatorClass(DescendingIntWritableComparator.class);
@@ -123,10 +118,10 @@ public class StackOverflow extends Configured implements Tool {
         protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
             String[] data = line.split(",");
-            if (data[0]=="1")
-                context.write(new Text(data[1]), new Text(data[0]+","+data[2]+","+data[5]));
+            if (Integer.parseInt(data[0]) == 1)
+                context.write(new Text(data[1]), new Text(data[0] + "," + data[2] + "," + data[5]));
             else
-                context.write(new Text(data[3]), new Text(data[0]+","+"1"+","));
+                context.write(new Text(data[3]), new Text(data[0] + "," + "1" + ","));
         }
     }
 
@@ -143,24 +138,21 @@ public class StackOverflow extends Configured implements Tool {
 
             for (Text text : values) {
                 String val[] = text.toString().split(",");
-                if (val[0] == "1") {            // jezeli jest pytaniem
+                if (Integer.parseInt(val[0]) == 1) {            // jezeli jest pytaniem
                     tag = val[2];
-                    if (val[1] != null)           // czy jest rozwiazanie
+                    if (!val[1].equals(""))           // czy jest rozwiazanie
                         isSolved = true;
                     else
                         isSolved = false;
-                } else if (val[0] == "2") {     // jezeli jest odpowiedzia
+                } else if (Integer.parseInt(val[0]) == 2) {     // jezeli jest odpowiedzia
                     answer += 1;
                 }
             }
-            context.write(new Text(tag), new Text(isSolved+","+answer));
-           /* if (tag!=null){
-                context.write(new Text(tag), new Text(isSolved+","+answer));
-            }*/
+            context.write(new Text(tag), new Text(Boolean.toString(isSolved) + "," + answer));
         }
     }
 
-    public static class StatsRed extends Reducer<Text, Text, IntWritable, Text>{
+    public static class StatsRed extends Reducer<Text, Text, IntWritable, Text> {
         @Override
         protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
             int sumAnswSolved = 0;
@@ -168,31 +160,42 @@ public class StackOverflow extends Configured implements Tool {
             int sumUnsolved = 0;
             int sumAnswUnsolved = 0;
             boolean isSolved = false;
-            for (Text text : values){
+            for (Text text : values) {
                 String val[] = text.toString().split(",");
                 isSolved = Boolean.parseBoolean(val[0]);
-                if (isSolved == true) {   // rozwiazane
+                if (isSolved) {   // rozwiazane
                     sumSolved += Integer.parseInt(val[1]);
                     sumAnswSolved++;
-                }
-                else if (isSolved == false) {   // nierozwiazane
+                } else {   // nierozwiazane
                     sumUnsolved += Integer.parseInt(val[1]);
                     sumAnswUnsolved++;
                 }
             }
-            context.write(new IntWritable(sumSolved), new Text(key+","+sumSolved +","+ sumSolved/sumAnswSolved +","+ sumUnsolved +","+ sumUnsolved/sumAnswUnsolved));
+            context.write(new IntWritable(sumAnswSolved), new Text(key + "\t" + sumAnswSolved + "\t" + (double) sumSolved / sumAnswSolved + "\t" + sumAnswUnsolved + "\t" + (double) sumUnsolved / sumAnswUnsolved));
         }
     }
 
-    public static class SortRed extends Reducer <Text, Text,Text,NullWritable>{
+
+    public static class SortMap extends Mapper<Text, Text, IntWritable, Text> {
+
+        public SortMap() {
+        }
+
         @Override
-        protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            for (Text text : values){
-               // String val[] = text.toString().split(",");
-               context.write(new Text( text.toString()), NullWritable.get());
+        protected void map(Text key, Text value, Context context) throws IOException, InterruptedException {
+            context.write(new IntWritable(Integer.parseInt(key.toString())), value);
+        }
+    }
+
+    public static class SortRed extends Reducer<IntWritable, Text, Text, NullWritable> {
+        @Override
+        protected void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            for (Text text : values) {
+                context.write(new Text(text.toString()), NullWritable.get());
             }
         }
     }
+
 
     public static class DescendingIntWritableComparator extends IntWritable.Comparator {
         protected DescendingIntWritableComparator() {
